@@ -5,7 +5,7 @@ SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 SET(MY_DIR ${libfreenect2_SOURCE_DIR})
 
-OPTION(ENABLE_CXX11 "Enable C++11 support" OFF)
+OPTION(ENABLE_CXX11 "Enable C++11 support" ON)
 OPTION(ENABLE_OPENCL "Enable OpenCL support" ON)
 
 IF(ENABLE_CXX11)
@@ -49,12 +49,8 @@ INCLUDE_DIRECTORIES("${MY_DIR}/../../depends/libusb/include/libusb-1.0/")
 LINK_DIRECTORIES("${MY_DIR}/../../depends/libusb/lib/")
 
 # GLEW
-INCLUDE_DIRECTORIES("${MY_DIR}/../../depends/glew/include/")
-if (APPLE)
-  LINK_DIRECTORIES("${MY_DIR}/../../depends/glew/lib/")
-else()
-  LINK_DIRECTORIES("${MY_DIR}/../../depends/glew/lib64/")
-endif()
+FIND_PACKAGE(GLEW REQUIRED)
+INCLUDE_DIRECTORIES(${GLEW_INCLUDE_DIR})
 ADD_DEFINITIONS(-DGLEW_MX -DGLEW_STATIC)
 
 # GLFW
@@ -99,7 +95,7 @@ SET(SOURCES
 )
 
 SET(LIBRARIES
-  usb-1.0
+  usb-1.0.a
   ${OpenCV_LIBS}
   turbojpeg
   ${LIBFREENECT2_THREADING_LIBRARIES}
