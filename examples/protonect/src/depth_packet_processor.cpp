@@ -83,7 +83,7 @@ DepthPacketProcessor::Parameters::Parameters()
   max_edge_count  = 5.0f;
 
   min_depth = 500.0f;
-  max_depth = 10000.0f;
+  max_depth = 4500.0f;
 }
 
 DepthPacketProcessor::DepthPacketProcessor() :
