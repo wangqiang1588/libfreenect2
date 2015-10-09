@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#maximize gpu frequency
+echo 852000000 > /sys/kernel/debug/clock/override.gbus/rate
+echo 1 > /sys/kernel/debug/clock/override.gbus/state
+
+#maximize gpu memory frequency
+echo 924000000 > /sys/kernel/debug/clock/override.emc/rate
+echo 1 > /sys/kernel/debug/clock/override.emc/state
