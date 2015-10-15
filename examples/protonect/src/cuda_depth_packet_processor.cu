@@ -26,6 +26,7 @@
 
 #include <libfreenect2/depth_packet_processor.h>
 #include <libfreenect2/frame_listener.hpp>
+#include <sensor_msgs/PointCloud2.h>
 #include <helper_math.h>
 #include <math_constants.h>
 
@@ -171,6 +172,34 @@ float2 processMeasurementTriple(const float ab_multiplier_per_frq, const float p
   *invalid = *invalid && any(isequal(v, make_float3(32767.0f)));
 
   return make_float2(dot(v, p0cos), -dot(v, p0sin)) * ab_multiplier_per_frq;
+}
+
+static __global__
+void populateCloud(const float* depth_data, const float* ir_data, const float fx, const float fy,
+                   const float cx, const float cy, const uint width, pcl::PointXYZRGB* cloud_out)
+{
+	const uint i = get_global_id(0);
+	
+	const uint x = i % 512;
+	const uint y = i / 512;
+
+	const float depth = depth_data[i];
+
+	pcl::PointXYZRGB& p = cloud_out[i];
+
+	if(!isfinite(depth))
+	{
+		p.x = p.y = p.z = nanf("nan");
+		return;
+	}
+	else
+	{
+		const float rgb = ir_data[i];
+		p.x = (x - cx) * depth / fx;
+		p.y = (y - cy) * depth / fy;
+		p.z = depth;
+		p.rgb = ((uint32_t)rgb << 16 | (uint32_t) rgb << 8 | (uint32_t)rgb);
+	}
 }
 
 static __global__
@@ -524,6 +553,7 @@ public:
   float *buf_depth;
   float *buf_ir_sum;
   float *buf_filtered;
+  pcl::PointXYZRGB *buf_point_cloud;
 
   size_t image_size;
   size_t grid_size;
@@ -606,6 +636,7 @@ public:
     size_t buf_depth_size = image_size * sizeof(float);
     size_t buf_ir_sum_size = image_size * sizeof(float);
     size_t buf_filtered_size = image_size * sizeof(float);
+    size_t buf_point_cloud_size = image_size * sizeof(pcl::PointXYZRGB);
 
     cudaSafeCall(cudaMalloc(&buf_a, buf_a_size));
     cudaSafeCall(cudaMalloc(&buf_b, buf_b_size));
@@ -617,7 +648,7 @@ public:
     cudaSafeCall(cudaMalloc(&buf_depth, buf_depth_size));
     cudaSafeCall(cudaMalloc(&buf_ir_sum, buf_ir_sum_size));
     cudaSafeCall(cudaMalloc(&buf_filtered, buf_filtered_size));
-
+    cudaSafeCall(cudaMalloc(&buf_point_cloud, buf_point_cloud_size));
     cudaDeviceSynchronize();
 
     cudaSafeCall(cudaGetLastError());
@@ -690,8 +721,9 @@ public:
   {
     size_t ir_frame_size = ir_frame->width * ir_frame->height * ir_frame->bytes_per_pixel;
     size_t depth_frame_size = depth_frame->width * depth_frame->height * depth_frame->bytes_per_pixel;
-
+    
     cudaMemcpyAsync(buf_packet, packet.buffer, packet.buffer_length, cudaMemcpyHostToDevice);
+
 
     processPixelStage1<<<grid_size, block_size>>>(buf_lut11to16, buf_z_table, buf_p0_table, buf_packet, buf_a, buf_b, buf_n, buf_ir);
 
@@ -712,9 +744,14 @@ public:
       filterPixelStage2<<<grid_size, block_size>>>(buf_depth, buf_ir_sum, buf_edge_test, buf_filtered);
     }
 
-    cudaMemcpyAsync(depth_frame->data, config.EnableEdgeAwareFilter ? buf_filtered : buf_depth, depth_frame_size, cudaMemcpyDeviceToHost);
+	populateCloud<<<grid_size, block_size>>>(buf_depth, buf_ir, depth_frame->fx_, depth_frame->fy_,
+                                              depth_frame->cx_, depth_frame->cy_,
+                                               depth_frame->width, buf_point_cloud);
+            cudaMemcpyAsync(&depth_frame->cloud.points[0], buf_point_cloud, image_size * sizeof(pcl::PointXYZRGB), cudaMemcpyDeviceToHost);    
 
-    cudaDeviceSynchronize();
+cudaMemcpyAsync(depth_frame->data, config.EnableEdgeAwareFilter ? buf_filtered : buf_depth, depth_frame_size, cudaMemcpyDeviceToHost);
+
+cudaDeviceSynchronize();
 
     cudaSafeCall(cudaGetLastError());
   }

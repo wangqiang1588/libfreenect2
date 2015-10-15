@@ -28,6 +28,8 @@
 #include <libfreenect2/resource.h>
 #include <libfreenect2/protocol/response.h>
 
+#include <sensor_msgs/PointCloud2.h>
+
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <fstream>
@@ -84,6 +86,7 @@ public:
 
   double timing_current_start;
 
+  pcl::PointCloud<pcl::PointXYZRGB> cloud_;
   Frame *ir_frame, *depth_frame;
 
   size_t image_size;
@@ -93,6 +96,10 @@ public:
 
   CudaDepthPacketProcessorImpl(const int deviceId = -1) : deviceInitialized(false), programInitialized(false)
   {
+    cloud_.points.resize(512 * 424);
+    cloud_.width = 512;
+    cloud_.height = 424;
+    cloud_.is_dense = false;
     newIrFrame();
     newDepthFrame();
 
@@ -172,6 +179,7 @@ public:
   void newDepthFrame()
   {
     depth_frame = new Frame(512, 424, 4);
+    depth_frame->cloud = &cloud_;
   }
 
   void fill_trig_table(const libfreenect2::protocol::P0TablesResponse *p0table)

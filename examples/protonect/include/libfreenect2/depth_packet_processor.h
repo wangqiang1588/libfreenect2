@@ -38,6 +38,8 @@
 #include <vector_types.h>
 #endif
 
+#include <pcl/common/common.h>
+
 namespace libfreenect2
 {
 
@@ -49,6 +51,8 @@ struct LIBFREENECT2_API DepthPacket
 };
 
 typedef PacketProcessor<DepthPacket> BaseDepthPacketProcessor;
+
+typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloud;
 
 class LIBFREENECT2_API DepthPacketProcessor : public BaseDepthPacketProcessor
 {
@@ -237,6 +241,7 @@ public:
   void initDevice(const int deviceId, size_t image_size_, size_t block);
   void generateOptions(const DepthPacketProcessor::Parameters &params, const DepthPacketProcessor::Config &config);
   void loadTables(const short *lut11to16, const float4 *p0_table, const float *x_table, const float *z_table);
+  //void run(const DepthPacket &packet, Frame *ir_frame, Frame *depth_frame, const DepthPacketProcessor::Config &config);
   void run(const DepthPacket &packet, Frame *ir_frame, Frame *depth_frame, const DepthPacketProcessor::Config &config);
 private:
   CudaDepthPacketProcessorKernelImpl *impl_;
