@@ -47,17 +47,17 @@ struct LIBFREENECT2_API Frame
   uint32_t timestamp;
   float fx_, fy_, cx_, cy_;
   size_t width, height, bytes_per_pixel;
-  pcl::PointCloud<pcl::PointXYZRGB> *cloud;
+
   unsigned char* data;
+  pcl::PointCloud<pcl::PointXYZRGB> *cloud;
 
   Frame(size_t width, size_t height, size_t bytes_per_pixel, float fx = 368.1,
-    float fy = 368.1, float cx = 261.7, float cy = 202.5) :
+        float fy = 368.1, float cx = 261.7, float cy = 202.5) :
     width(width),
     height(height),
     fx_(fx),
     fy_(fy),
-    cx_(cx),
-    cy_(cy),
+    cx_(cx), cy_(cy),
     bytes_per_pixel(bytes_per_pixel)
   {
     data = new unsigned char[width * height * bytes_per_pixel];

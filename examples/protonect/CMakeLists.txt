@@ -43,17 +43,19 @@ FIND_PACKAGE(OpenCL)
 
 FIND_PACKAGE(CUDA)
 
+find_package(PCL REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+
+
 # dependencies
 FIND_PACKAGE(OpenCV REQUIRED)
-FIND_PACKAGE(PCL REQUIRED)
-INCLUDE_DIRECTORIES(${PCL_INCLUDE_DIRS})
 
 # OpenCV
 INCLUDE_DIRECTORIES(${OpenCV_INCLUDE_DIR})
 
 # LibUSB
 INCLUDE_DIRECTORIES("${MY_DIR}/../../depends/libusb/include/libusb-1.0/")
-LINK_DIRECTORIES("${MY_DIR}/../../depends/libusb/lib/")
+LINK_DIRECTORIES("${MY_DIR}/../../depends/libusb/lib")
 
 IF(ENABLE_OPENGL)
   # GLFW
@@ -119,10 +121,10 @@ IF(ENABLE_TEGRA_JPEG AND EXISTS "/etc/nv_tegra_release")
   ENDIF(NOT TEGRA_JPEG_LIBRARY)
 
   INCLUDE_DIRECTORIES("${MY_DIR}/../../depends/nv_headers")
-  CHECK_SYMBOL_EXISTS(TEGRA_ACCELERATE "${MY_DIR}/../../depends/nv_headers/jconfig.h" TEGRA_JPEG_HEADERS)
-  IF(NOT TEGRA_JPEG_HEADERS)
-    MESSAGE(FATAL_ERROR "Did not find headers for Tegra JPEG library in ${MY_DIR}/../../depends/nv_headers")
-  ENDIF(NOT TEGRA_JPEG_HEADERS)
+  #CHECK_SYMBOL_EXISTS(TEGRA_ACCELERATE "${MY_DIR}/../../depends/nv_headers/jconfig.h" TEGRA_JPEG_HEADERS)
+  #IF(NOT TEGRA_JPEG_HEADERS)
+    #MESSAGE(FATAL_ERROR "Did not find headers for Tegra JPEG library in ${MY_DIR}/../../depends/nv_headers")
+  #ENDIF(NOT TEGRA_JPEG_HEADERS)
 
   MESSAGE(STATUS "Found Tegra hardware accelerated JPEG support")
   SET(LIBFREENECT2_WITH_TEGRA_JPEG_SUPPORT 1)
