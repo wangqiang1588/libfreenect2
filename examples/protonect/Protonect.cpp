@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     cv::cvtColor(rgba, bgra, cv::COLOR_RGBA2BGRA);
     cv::imshow("rgb", bgra);
 #endif
-    cv::imshow("ir", cv::Mat(ir->height, ir->width, CV_32FC1, ir->data) / 20000.0f);
+    //cv::imshow("ir", cv::Mat(ir->height, ir->width, CV_32FC1, ir->data) / 20000.0f);
     cv::imshow("depth", cv::Mat(depth->height, depth->width, CV_32FC1, depth->data) / 4500.0f);
 
     //std::cout << "Cloud: " << depth->cloud->points.size() << std::endl;
