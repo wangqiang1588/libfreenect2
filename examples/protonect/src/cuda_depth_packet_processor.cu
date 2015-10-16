@@ -28,6 +28,7 @@
 #include <libfreenect2/frame_listener.hpp>
 
 
+//#include <sensor_msgs/PointCloud2.h>
 
 #include <thrust/device_ptr.h>
 #include <thrust/reduce.h>
@@ -37,6 +38,9 @@
 
 #include <iostream>
 #include <stdexcept>
+
+using namespace std;
+#include <opencv2/gpu/gpu.hpp>
 
 
 #define cudaSafeCall(expr) do { cudaError_t err = (expr); if (err != cudaSuccess) throw std::runtime_error(cudaGetErrorString(err)); } while(0)
@@ -257,6 +261,7 @@ static __global__
 void rescaleIr(const float* buf_ir, const float minimum, const float maximum, float* buf_ir_rescaled)
 {
     const uint i = get_global_id(0);
+
     const float& p = buf_ir[i];
     float& scaled_p = buf_ir_rescaled[i];
     scaled_p = (p - minimum) * 255 / (maximum - minimum);
@@ -576,9 +581,13 @@ public:
 
     void initDevice(const int deviceId, size_t image_size_, size_t block)
     {
+
         int deviceCount = 0;
 
+
         cudaSafeCall(cudaGetDeviceCount(&deviceCount));
+
+        std::cout << OUT_NAME("Inside initDevice cu deviceCount") << " " << deviceCount << std::endl;
 
         int devId = -1;
         for (int i = 0; i < deviceCount; i++)
@@ -652,6 +661,7 @@ public:
         size_t buf_ir_sum_size = image_size * sizeof(float);
         size_t buf_ir_rescaled_size = image_size * sizeof(float);
         size_t buf_filtered_size = image_size * sizeof(float);
+
         size_t buf_point_cloud_size = image_size * sizeof(pcl::PointXYZRGB);
 
         cudaSafeCall(cudaMalloc(&buf_a, buf_a_size));
@@ -665,7 +675,12 @@ public:
         cudaSafeCall(cudaMalloc(&buf_ir_sum, buf_ir_sum_size));
         cudaSafeCall(cudaMalloc(&buf_ir_rescaled, buf_ir_rescaled_size));
         cudaSafeCall(cudaMalloc(&buf_filtered, buf_filtered_size));
+
         cudaSafeCall(cudaMalloc(&buf_point_cloud, buf_point_cloud_size));
+
+        cudaSafeCall(cudaMalloc(&min_depth_value, sizeof(float)));
+        cudaSafeCall(cudaMalloc(&max_depth_value, sizeof(float)));
+
         cudaDeviceSynchronize();
 
         cudaSafeCall(cudaGetLastError());
@@ -749,6 +764,7 @@ public:
         float maximum = thrust::reduce(dev_ptr_ir, dev_ptr_ir + image_size, -1, thrust::maximum<float>());
         float minimum = thrust::reduce(dev_ptr_ir, dev_ptr_ir + image_size, 1, thrust::minimum<float>());
         rescaleIr<<<grid_size, block_size>>>(buf_ir, minimum, maximum, buf_ir);
+//        buf_ir_rescaled = ir_mat.data;
 
         if (config.EnableBilateralFilter)
         {
@@ -760,10 +776,13 @@ public:
                                                         config.EnableBilateralFilter ? buf_a_filtered : buf_a,
                                                         config.EnableBilateralFilter ? buf_b_filtered : buf_b,
                                                         buf_x_table, buf_z_table, buf_depth, buf_ir_sum);
+
         if (config.EnableEdgeAwareFilter)
         {
             filterPixelStage2<<<grid_size, block_size>>>(buf_depth, buf_ir_sum, buf_edge_test, buf_filtered);
         }
+//        cudaMemcpyAsync(ir_frame->data, buf_ir, ir_frame_size,
+//                        cudaMemcpyDeviceToHost);
         cudaMemcpyAsync(depth_frame->data, config.EnableEdgeAwareFilter ? buf_filtered : buf_depth, depth_frame_size,
                         cudaMemcpyDeviceToHost);
 
