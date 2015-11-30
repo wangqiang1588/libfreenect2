@@ -758,6 +758,9 @@ public:
 
         processPixelStage1<<<grid_size, block_size>>>(buf_lut11to16, buf_z_table, buf_p0_table,
                                                       buf_packet, buf_a, buf_b, buf_n, buf_ir);
+
+        cudaMemcpyAsync(ir_frame->data, buf_ir, ir_frame_size, cudaMemcpyDeviceToHost);
+
         thrust::device_ptr<float> dev_ptr_ir = thrust::device_pointer_cast(buf_ir);
         float sum = thrust::reduce(dev_ptr_ir, dev_ptr_ir + image_size, 0, thrust::plus<int>());
         float mean = sum / (ir_frame->width * ir_frame->height);
