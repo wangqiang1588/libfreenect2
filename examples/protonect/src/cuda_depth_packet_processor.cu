@@ -91,6 +91,7 @@ __constant__ static float MAX_EDGE_COUNT;
 __constant__ static float MIN_DEPTH;
 __constant__ static float MAX_DEPTH;
 
+
 #define sqrt(x) sqrtf(x)
 #define sincos(x, a, b) sincosf(x, a, b)
 #define atan2(a, b) atan2f(a, b)
@@ -186,8 +187,28 @@ float2 processMeasurementTriple(const float ab_multiplier_per_frq, const float p
 }
 
 static __global__
-void populateCloud(const float* depth_data, const float* ir_data, const float fx, const float fy,
-                   const float cx, const float cy, const uint width, pcl::PointXYZRGB* cloud_out)
+void flip(float* data, const uint width)
+{
+  const uint i = blockIdx.x * blockDim.x + threadIdx.x;
+
+  const uint x = width - i % width - 1; //i % width only if not flipped
+  const uint y = i / width;
+
+  const uint first_index = y * width + x;
+  const uint second_index = (y + 1) * width - 1 - x;
+
+  if(x > width / 2) return;
+
+  const float tmp = data[first_index];
+  data[first_index] = data[second_index];
+  data[second_index] = tmp;
+}
+
+static __global__
+void populateCloud(const float* depth_data, const float* ir_data,
+                   const float fx, const float fy,
+                   const float cx, const float cy, const uint width,
+                   pcl::PointXYZRGB* cloud_out)
 {
     const uint i = blockIdx.x*blockDim.x + threadIdx.x;
 
@@ -751,23 +772,25 @@ public:
 
     void run(const DepthPacket &packet, Frame *ir_frame, Frame *depth_frame, const DepthPacketProcessor::Config &config)
     {
-        size_t ir_frame_size = ir_frame->width * ir_frame->height * ir_frame->bytes_per_pixel;
-        size_t depth_frame_size = depth_frame->width * depth_frame->height * depth_frame->bytes_per_pixel;
+        size_t ir_frame_size = ir_frame->width * ir_frame->height *
+            ir_frame->bytes_per_pixel;
+        size_t depth_frame_size = depth_frame->width * depth_frame->height *
+            depth_frame->bytes_per_pixel;
 
         cudaMemcpyAsync(buf_packet, packet.buffer, packet.buffer_length, cudaMemcpyHostToDevice);
 
         processPixelStage1<<<grid_size, block_size>>>(buf_lut11to16, buf_z_table, buf_p0_table,
                                                       buf_packet, buf_a, buf_b, buf_n, buf_ir);
+        flip<<<grid_size, block_size>>>(buf_ir, ir_frame->width);
 
         cudaMemcpyAsync(ir_frame->data, buf_ir, ir_frame_size, cudaMemcpyDeviceToHost);
 
         thrust::device_ptr<float> dev_ptr_ir = thrust::device_pointer_cast(buf_ir);
         float sum = thrust::reduce(dev_ptr_ir, dev_ptr_ir + image_size, 0, thrust::plus<int>());
-        float mean = sum / (ir_frame->width * ir_frame->height);
         float maximum = thrust::reduce(dev_ptr_ir, dev_ptr_ir + image_size, -1, thrust::maximum<float>());
         float minimum = thrust::reduce(dev_ptr_ir, dev_ptr_ir + image_size, 1, thrust::minimum<float>());
         rescaleIr<<<grid_size, block_size>>>(buf_ir, minimum, maximum, buf_ir);
-//        buf_ir_rescaled = ir_mat.data;
+
 
         if (config.EnableBilateralFilter)
         {
@@ -784,16 +807,21 @@ public:
         {
             filterPixelStage2<<<grid_size, block_size>>>(buf_depth, buf_ir_sum, buf_edge_test, buf_filtered);
         }
-//        cudaMemcpyAsync(ir_frame->data, buf_ir, ir_frame_size,
-//                        cudaMemcpyDeviceToHost);
+        flip<<<grid_size, block_size>>>(config.EnableEdgeAwareFilter ?
+                                          buf_filtered : buf_depth,
+                                        depth_frame->width);
+
         cudaMemcpyAsync(depth_frame->data, config.EnableEdgeAwareFilter ? buf_filtered : buf_depth, depth_frame_size,
                         cudaMemcpyDeviceToHost);
 
         populateCloud<<<grid_size, block_size>>>(config.EnableEdgeAwareFilter ? buf_filtered : buf_depth,
                                                  buf_ir,
-                                                 depth_frame->fx_, depth_frame->fy_,
-                                                 depth_frame->cx_, depth_frame->cy_,
-                                                 depth_frame->width, buf_point_cloud);
+                                                 depth_frame->fx_,
+                                                 depth_frame->fy_,
+                                                 depth_frame->cx_,
+                                                 depth_frame->cy_,
+                                                 depth_frame->width,
+                                                 buf_point_cloud);
 
 
         cudaMemcpyAsync(&depth_frame->cloud->points[0], buf_point_cloud, depth_frame->width * depth_frame->height

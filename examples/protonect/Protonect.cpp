@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     cv::imshow("ir", cv::Mat(ir->height, ir->width, CV_32FC1, ir->data) / 20000.0f);
     cv::imshow("depth", cv::Mat(depth->height, depth->width, CV_32FC1, depth->data) / 4500.0f);
 
-    //std::cout << "Cloud: " << depth->cloud->points.size() << std::endl;
+    std::cout << "Cloud: " << depth->cloud->points.size() << std::endl;
 
 //    pcl::io::savePCDFile("file.pcd",*(depth->cloud));
 
@@ -121,6 +121,7 @@ int main(int argc, char *argv[])
     protonect_shutdown = protonect_shutdown || (key > 0 && ((key & 0xFF) == 27)); // shutdown on escape
 
     listener.release(frames);
+//    return 0;
     //libfreenect2::this_thread::sleep_for(libfreenect2::chrono::milliseconds(100));
   }
 
