@@ -159,8 +159,10 @@ ADD_EXECUTABLE(test_opengl
   src/test_opengl_depth_packet_processor.cpp
 )
 
+#for Nvidiva TX2 must add libdrm
 TARGET_LINK_LIBRARIES(test_opengl
   freenect2
+  drm
 )
   
 ADD_EXECUTABLE(Protonect
