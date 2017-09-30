@@ -168,9 +168,11 @@ TARGET_LINK_LIBRARIES(test_opengl
 ADD_EXECUTABLE(Protonect
   Protonect.cpp
 )
-  
+
+#for Nvidiva TX2 must add libdrm  
 TARGET_LINK_LIBRARIES(Protonect
   freenect2
+  drm
 )
 
 CONFIGURE_FILE(freenect2.cmake.in "${PROJECT_BINARY_DIR}/freenect2Config.cmake" @ONLY)
