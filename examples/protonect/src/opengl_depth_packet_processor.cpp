@@ -666,7 +666,10 @@ struct OpenGLDepthPacketProcessorImpl
 OpenGLDepthPacketProcessor::OpenGLDepthPacketProcessor(void *parent_opengl_context_ptr, bool debug)
 {
   GLFWwindow* parent_window = (GLFWwindow *)parent_opengl_context_ptr;
-
+  
+  /*must call glfwInit before any glfw* function */
+  glfwInit();  
+  
   glfwDefaultWindowHints();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
