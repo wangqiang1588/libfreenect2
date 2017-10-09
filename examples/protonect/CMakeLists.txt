@@ -99,6 +99,7 @@ SET(LIBRARIES
   ${OpenCV_LIBS}
   turbojpeg
   ${LIBFREENECT2_THREADING_LIBRARIES}
+  udev
 )
 
 SET(RESOURCES
@@ -163,6 +164,7 @@ ADD_EXECUTABLE(test_opengl
 TARGET_LINK_LIBRARIES(test_opengl
   freenect2
   drm
+  pthread
 )
   
 ADD_EXECUTABLE(Protonect
